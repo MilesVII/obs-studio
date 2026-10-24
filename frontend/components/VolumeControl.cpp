@@ -473,11 +473,6 @@ void VolumeControl::showVolumeControlMenu(QPoint pos)
 	popup->addAction(lockAction);
 
 	popup->addSeparator();
-	popup->addAction(copyFiltersAction);
-	popup->addAction(pasteFiltersAction);
-	popup->addSeparator();
-	popup->addAction(mixerRenameAction);
-	popup->addSeparator();
 	popup->addAction(filtersAction);
 	popup->addAction(propertiesAction);
 

@@ -21,6 +21,7 @@
 
 #include <components/UIValidation.hpp>
 #include <dialogs/OBSRemux.hpp>
+#include <utility/CaptureTarget.hpp>
 
 #include <qt-wrappers.hpp>
 
@@ -118,6 +119,8 @@ void OBSBasic::StartRecording()
 	if (disableOutputsRef) {
 		return;
 	}
+
+	captureTarget->SyncCanvasSize();
 
 	if (!OutputPathValid()) {
 		OutputPathInvalidMessage();

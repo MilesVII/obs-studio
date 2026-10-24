@@ -35,6 +35,9 @@ OBSBasicStatusBar::OBSBasicStatusBar(QWidget *parent)
 	statusWidget->ui->delayFrame->hide();
 	statusWidget->ui->issuesFrame->hide();
 	statusWidget->ui->kbps->hide();
+	/* Network and stream indicators only apply to streaming */
+	statusWidget->ui->networkFrame->hide();
+	statusWidget->ui->streamFrame->hide();
 
 	addPermanentWidget(statusWidget, 1);
 	setMinimumHeight(statusWidget->height());

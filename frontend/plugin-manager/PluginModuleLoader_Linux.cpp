@@ -17,6 +17,8 @@
 
 #include "PluginModuleLoader.hpp"
 #include "PluginManager.hpp"
+
+#include <utility/AppConfigDir.hpp>
 #include <LoaderPaths_Linux.hpp>
 
 #include <obs.h>
@@ -65,11 +67,11 @@ namespace Constants = OBS::Constants;
 
 constexpr std::string_view kModulePathSuffix{"/%module%/"};
 constexpr std::string_view kModuleDataPathSuffix{"/%module%/data/"};
-constexpr std::string_view kXdgBinaryPath{"/obs-studio/plugins/%module%/"};
-constexpr std::string_view kXdgDataPath{"/obs-studio/plugins/%module%/data/"};
+constexpr std::string_view kXdgBinaryPath{"/" OBS_APP_CONFIG_DIR "/plugins/%module%/"};
+constexpr std::string_view kXdgDataPath{"/" OBS_APP_CONFIG_DIR "/plugins/%module%/data/"};
 
-constexpr std::string_view kLegacyXdgBinaryPath{"/obs-studio/plugins/%module%/bin/64bit"};
-constexpr std::string_view kLegacyXdgDataPath{"/obs-studio/plugins/%module%/data"};
+constexpr std::string_view kLegacyXdgBinaryPath{"/" OBS_APP_CONFIG_DIR "/plugins/%module%/bin/64bit"};
+constexpr std::string_view kLegacyXdgDataPath{"/" OBS_APP_CONFIG_DIR "/plugins/%module%/data"};
 
 constexpr bool hasSystemPluginPath = !Constants::kPlatformPluginModulePath.empty() &&
 				     !Constants::kPlatformPluginDataPath.empty();

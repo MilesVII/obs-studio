@@ -3,9 +3,12 @@ target_sources(
   PRIVATE
     utility/AdvancedOutput.cpp
     utility/AdvancedOutput.hpp
+    utility/AppConfigDir.hpp
     utility/BaseLexer.hpp
     utility/BasicOutputHandler.cpp
     utility/BasicOutputHandler.hpp
+    utility/CaptureTarget.cpp
+    utility/CaptureTarget.hpp
     utility/CrashHandler.cpp
     utility/CrashHandler.hpp
     utility/FFmpegCodec.cpp

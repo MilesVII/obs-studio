@@ -20,6 +20,7 @@
 #include <dialogs/OBSMissingFiles.hpp>
 #include <importer/OBSImporter.hpp>
 #include <models/SceneCollection.hpp>
+#include <utility/CaptureTarget.hpp>
 #include <utility/item-widget-helpers.hpp>
 
 #include <qt-wrappers.hpp>
@@ -42,7 +43,7 @@ using SceneCollection = OBS::SceneCollection;
 
 // MARK: Constant Expressions
 
-static constexpr std::string_view SceneCollectionPath = "/obs-studio/basic/scenes/";
+static constexpr std::string_view SceneCollectionPath = "/" OBS_APP_CONFIG_DIR "/basic/scenes/";
 
 namespace DataKeys {
 static constexpr std::string_view AbsoluteCoordinates = "AbsoluteCoordinates";
@@ -781,6 +782,7 @@ void OBSBasic::ActivateSceneCollection(SceneCollection &collection)
 	config_set_string(App()->GetUserConfig(), "Basic", "SceneCollectionFile", collection.getFileName().c_str());
 
 	Load(collection);
+	captureTarget->Attach();
 
 	RefreshSceneCollections();
 
@@ -1418,22 +1420,14 @@ retryScene:
 
 	RefreshQuickTransitions();
 
-	bool previewLocked = obs_data_get_bool(data, "preview_locked");
-	ui->preview->SetLocked(previewLocked);
-	ui->actionLockPreview->setChecked(previewLocked);
+	/* The preview is display-only, the capture source is placed automatically */
+	ui->preview->SetLocked(true);
+	ui->actionLockPreview->setChecked(true);
 
 	/* ---------------------- */
 
-	bool fixedScaling = obs_data_get_bool(data, "scaling_enabled");
-	int scalingLevel = (int)obs_data_get_int(data, "scaling_level");
-	float scrollOffX = (float)obs_data_get_double(data, "scaling_off_x");
-	float scrollOffY = (float)obs_data_get_double(data, "scaling_off_y");
-
-	if (fixedScaling) {
-		ui->preview->SetScalingLevel(scalingLevel);
-		ui->preview->SetScrollingOffset(scrollOffX, scrollOffY);
-	}
-	ui->preview->SetFixedScaling(fixedScaling);
+	/* The preview always fits the window, it has no zoom */
+	ui->preview->SetFixedScaling(false);
 
 	emit ui->preview->DisplayResized();
 

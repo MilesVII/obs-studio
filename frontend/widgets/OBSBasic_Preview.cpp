@@ -241,7 +241,11 @@ void OBSBasic::ResizePreview(uint32_t cx, uint32_t cy)
 
 void OBSBasic::on_preview_customContextMenuRequested()
 {
-	CreateSourcePopupMenu(GetTopSelectedSourceItem(), true);
+	QMenu popup(this);
+
+	popup.addAction(QTStr("Basic.Main.Preview.Disable"), this, &OBSBasic::TogglePreview);
+
+	popup.exec(QCursor::pos());
 }
 
 void OBSBasic::on_previewDisabledWidget_customContextMenuRequested()
@@ -253,12 +257,6 @@ void OBSBasic::on_previewDisabledWidget_customContextMenuRequested()
 	action->setCheckable(true);
 	action->setChecked(obs_display_enabled(ui->preview->GetDisplay()));
 
-	previewProjectorMain = new QMenu(QTStr("Projector.Open.Preview"));
-	AddProjectorMenuMonitors(previewProjectorMain, this, &OBSBasic::OpenPreviewProjector);
-	previewProjectorMain->addSeparator();
-	previewProjectorMain->addAction(QTStr("Projector.Window"), this, &OBSBasic::OpenPreviewWindow);
-
-	popup.addMenu(previewProjectorMain);
 	popup.exec(QCursor::pos());
 }
 

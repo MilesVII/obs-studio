@@ -12,6 +12,8 @@ target_sources(
   PRIVATE
     widgets/AudioMixer.cpp
     widgets/AudioMixer.hpp
+    widgets/CapturePanel.cpp
+    widgets/CapturePanel.hpp
     widgets/ColorSelect.cpp
     widgets/ColorSelect.hpp
     widgets/OBSBasic.cpp
@@ -57,6 +59,8 @@ target_sources(
     widgets/OBSProjector.hpp
     widgets/OBSQTDisplay.cpp
     widgets/OBSQTDisplay.hpp
+    widgets/RecordingPanel.cpp
+    widgets/RecordingPanel.hpp
     widgets/StatusBarWidget.cpp
     widgets/StatusBarWidget.hpp
 )

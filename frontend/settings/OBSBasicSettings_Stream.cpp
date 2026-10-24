@@ -1737,9 +1737,7 @@ void OBSBasicSettings::ResetEncoders(bool streamOnly)
 
 	if (!streamOnly) {
 		ui->advOutRecEncoder->model()->sort(0);
-		ui->advOutRecEncoder->insertItem(0, TEXT_USE_STREAM_ENC, "none");
 		ui->advOutRecAEncoder->model()->sort(0);
-		ui->advOutRecAEncoder->insertItem(0, TEXT_USE_STREAM_ENC, "none");
 	}
 
 	/* ------------------------------------------------- */

@@ -57,7 +57,9 @@ OBSBasicControls::OBSBasicControls(OBSBasic *main) : QFrame(nullptr), ui(new Ui:
 		forceStopStreamAction, &QAction::triggered, this,
 		[this]() { emit this->ForceStopStreamMenuActionClicked(); }, Qt::DirectConnection);
 
-	/* Set up default visibility */
+	/* Set up default visibility, streaming and studio mode are not part of the recorder */
+	ui->streamButton->setVisible(false);
+	ui->modeSwitch->setVisible(false);
 	ui->broadcastButton->setVisible(false);
 	ui->pauseRecordButton->setVisible(false);
 	ui->replayBufferButton->setVisible(false);
@@ -263,7 +265,6 @@ void OBSBasicControls::UpdateStudioModeState(bool enabled)
 
 void OBSBasicControls::EnableBroadcastFlow(bool enabled)
 {
-	ui->broadcastButton->setVisible(enabled);
 	ui->broadcastButton->setEnabled(enabled);
 
 	ui->broadcastButton->setText(QTStr("Basic.Main.SetupBroadcast"));
@@ -280,6 +281,6 @@ void OBSBasicControls::EnableReplayBufferButtons(bool enabled)
 
 void OBSBasicControls::EnableVirtualCamButtons()
 {
+	/* The virtual camera always shows the capture, so there is nothing to configure */
 	ui->virtualCamButton->setVisible(true);
-	ui->virtualCamConfigButton->setVisible(true);
 }

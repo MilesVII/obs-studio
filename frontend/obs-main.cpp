@@ -72,7 +72,8 @@ bool opt_start_virtualcam = false;
 bool opt_minimize_tray = false;
 bool opt_allow_opengl = false;
 bool opt_always_on_top = false;
-bool opt_disable_updater = false;
+// The upstream updater would replace this fork with a stock OBS Studio build, so it is always disabled.
+bool opt_disable_updater = true;
 bool opt_disable_missing_files_check = false;
 string opt_starting_collection;
 string opt_starting_profile;
@@ -392,10 +393,10 @@ static void create_log_file(fstream &logFile)
 {
 	stringstream dst;
 
-	get_last_log(false, "obs-studio/logs", lastLogFile);
+	get_last_log(false, OBS_APP_CONFIG_DIR "/logs", lastLogFile);
 
 	currentLogFile = GenerateTimeDateFilename("txt");
-	dst << "obs-studio/logs/" << currentLogFile.c_str();
+	dst << OBS_APP_CONFIG_DIR "/logs/" << currentLogFile.c_str();
 
 	BPtr<char> path(GetAppConfigPathPtr(dst.str().c_str()));
 
@@ -408,7 +409,7 @@ static void create_log_file(fstream &logFile)
 #endif
 
 	if (logFile.is_open()) {
-		delete_oldest_file(false, "obs-studio/logs");
+		delete_oldest_file(false, OBS_APP_CONFIG_DIR "/logs");
 		base_set_log_handler(do_log, &logFile);
 	} else {
 		blog(LOG_ERROR, "Failed to open log file");
@@ -450,7 +451,7 @@ static void SaveProfilerData(const ProfilerSnapshot &snap)
 
 #define LITERAL_SIZE(x) x, (sizeof(x) - 1)
 	ostringstream dst;
-	dst.write(LITERAL_SIZE("obs-studio/profiler_data/"));
+	dst.write(LITERAL_SIZE(OBS_APP_CONFIG_DIR "/profiler_data/"));
 	dst.write(currentLogFile.c_str(), pos);
 	dst.write(LITERAL_SIZE(".csv.gz"));
 #undef LITERAL_SIZE
@@ -541,7 +542,7 @@ static int run_program(fstream &logFile, int argc, char *argv[])
 		bool created_log = false;
 
 		program.AppInit();
-		delete_oldest_file(false, "obs-studio/profiler_data");
+		delete_oldest_file(false, OBS_APP_CONFIG_DIR "/profiler_data");
 
 		OBSTranslator translator;
 		program.installTranslator(&translator);
@@ -723,7 +724,7 @@ static void main_crash_handler(const char *format, va_list args, void * /* param
 	vsnprintf(text, MAX_CRASH_REPORT_SIZE, format, args);
 	text[MAX_CRASH_REPORT_SIZE - 1] = 0;
 
-	string crashFilePath = "obs-studio/crashes";
+	string crashFilePath = OBS_APP_CONFIG_DIR "/crashes";
 
 	delete_oldest_file(true, crashFilePath.c_str());
 

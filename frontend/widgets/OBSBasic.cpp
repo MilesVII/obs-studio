@@ -22,7 +22,9 @@
 
 #include "ColorSelect.hpp"
 #include "OBSBasicControls.hpp"
+#include "CapturePanel.hpp"
 #include "OBSBasicStats.hpp"
+#include "RecordingPanel.hpp"
 #include "plugin-manager/PluginManager.hpp"
 
 #include <obs-module.h>
@@ -39,6 +41,7 @@
 #include <dialogs/OBSBasicTransform.hpp>
 #include <models/SceneCollection.hpp>
 #include <settings/OBSBasicSettings.hpp>
+#include <utility/CaptureTarget.hpp>
 #include <utility/QuickTransition.hpp>
 #include <utility/SceneRenameDelegate.hpp>
 #include <utility/ScreenshotObj.hpp>
@@ -128,7 +131,7 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	RegisterYoutubeAuth();
 #endif
 
-	setAcceptDrops(true);
+	setAcceptDrops(false);
 
 	setContextMenuPolicy(Qt::CustomContextMenu);
 
@@ -138,6 +141,11 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 
 	ui->setupUi(this);
 	ui->previewDisabledWidget->setVisible(false);
+
+	/* The preview only shows the capture: no zoom controls and no source context bar */
+	ui->previewXContainer->setVisible(false);
+	ui->previewYScrollBar->setVisible(false);
+	ui->preview->removeAction(ui->actionRemoveSource);
 
 	/* Set up streaming connections */
 	connect(
@@ -172,6 +180,8 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 		},
 		Qt::DirectConnection);
 
+	captureTarget = new CaptureTarget(this);
+
 	/* Add controls dock */
 	OBSBasicControls *controls = new OBSBasicControls(this);
 	controlsDock = new OBSDock(this);
@@ -179,6 +189,18 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	controlsDock->setWindowTitle(QTStr("Basic.Main.Controls"));
 	/* Parenting is done there so controls will be deleted alongside controlsDock */
 	controlsDock->setWidget(controls);
+
+	/* Add capture and recording docks */
+	captureDock = new OBSDock(this);
+	captureDock->setObjectName(QString::fromUtf8("captureDock"));
+	captureDock->setWindowTitle(QTStr("Basic.Capture"));
+	captureDock->setWidget(new CapturePanel(this));
+
+	recordingPanel = new RecordingPanel(this);
+	recordingDock = new OBSDock(this);
+	recordingDock->setObjectName(QString::fromUtf8("recordingDock"));
+	recordingDock->setWindowTitle(QTStr("Basic.Recording"));
+	recordingDock->setWidget(recordingPanel);
 
 	connect(controls, &OBSBasicControls::StreamButtonClicked, this, &OBSBasic::StreamActionTriggered);
 
@@ -238,13 +260,12 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	/* Main window default layout */
 	setDockCornersVertical(true);
 
-	/* Scenes and Sources dock on left
-	 * This specific arrangement can't be set up in Qt Designer */
-	addDockWidget(Qt::LeftDockWidgetArea, ui->scenesDock);
-	splitDockWidget(ui->scenesDock, ui->sourcesDock, Qt::Vertical);
-	int sideDockWidth = std::min(width() * 30 / 100, 320);
-	resizeDocks({ui->scenesDock, ui->sourcesDock}, {sideDockWidth, sideDockWidth}, Qt::Horizontal);
-	addDockWidget(Qt::BottomDockWidgetArea, controlsDock);
+	/* Preview in the center, capture and recording settings, the mixer and the controls below it */
+	RemoveEditingDocks();
+	addDockWidget(Qt::BottomDockWidgetArea, captureDock);
+	splitDockWidget(captureDock, recordingDock, Qt::Horizontal);
+	splitDockWidget(recordingDock, ui->mixerDock, Qt::Horizontal);
+	splitDockWidget(ui->mixerDock, controlsDock, Qt::Horizontal);
 
 	startingDockLayout = saveState();
 
@@ -387,24 +408,6 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	ui->idianPlayground->setVisible(false);
 #endif
 
-	auto addNudge = [this](const QKeySequence &seq, MoveDir direction, int distance) {
-		QAction *nudge = new QAction(ui->preview);
-		nudge->setShortcut(seq);
-		nudge->setShortcutContext(Qt::WidgetShortcut);
-		ui->preview->addAction(nudge);
-		connect(nudge, &QAction::triggered, this,
-			[this, distance, direction]() { Nudge(distance, direction); });
-	};
-
-	addNudge(Qt::Key_Up, MoveDir::Up, 1);
-	addNudge(Qt::Key_Down, MoveDir::Down, 1);
-	addNudge(Qt::Key_Left, MoveDir::Left, 1);
-	addNudge(Qt::Key_Right, MoveDir::Right, 1);
-	addNudge(Qt::SHIFT | Qt::Key_Up, MoveDir::Up, 10);
-	addNudge(Qt::SHIFT | Qt::Key_Down, MoveDir::Down, 10);
-	addNudge(Qt::SHIFT | Qt::Key_Left, MoveDir::Left, 10);
-	addNudge(Qt::SHIFT | Qt::Key_Right, MoveDir::Right, 10);
-
 	/* Setup dock toggle action
 	 * And hide all docks before restoring parent geometry */
 #define SETUP_DOCK(dock)                                    \
@@ -412,10 +415,9 @@ OBSBasic::OBSBasic(QWidget *parent) : OBSMainWindow(parent), undo_s(ui), ui(new 
 	ui->menuDocks->addAction(dock->toggleViewAction()); \
 	dock->setVisible(false);
 
-	SETUP_DOCK(ui->scenesDock);
-	SETUP_DOCK(ui->sourcesDock);
+	SETUP_DOCK(captureDock);
+	SETUP_DOCK(recordingDock);
 	SETUP_DOCK(ui->mixerDock);
-	SETUP_DOCK(ui->transitionsDock);
 	SETUP_DOCK(controlsDock);
 	SETUP_DOCK(statsDock);
 #undef SETUP_DOCK
@@ -637,8 +639,8 @@ bool OBSBasic::InitBasicConfigDefaults()
 	config_set_default_bool(activeConfiguration, "SimpleOutput", "UseAdvanced", false);
 	config_set_default_string(activeConfiguration, "SimpleOutput", "Preset", "veryfast");
 	config_set_default_string(activeConfiguration, "SimpleOutput", "NVENCPreset2", "p5");
-	config_set_default_string(activeConfiguration, "SimpleOutput", "RecQuality", "Stream");
-	config_set_default_bool(activeConfiguration, "SimpleOutput", "RecRB", false);
+	config_set_default_string(activeConfiguration, "SimpleOutput", "RecQuality", "Small");
+	config_set_default_bool(activeConfiguration, "SimpleOutput", "RecRB", true);
 	config_set_default_int(activeConfiguration, "SimpleOutput", "RecRBTime", 20);
 	config_set_default_int(activeConfiguration, "SimpleOutput", "RecRBSize", 512);
 	config_set_default_string(activeConfiguration, "SimpleOutput", "RecRBPrefix", "Replay");
@@ -658,7 +660,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 	config_set_default_string(activeConfiguration, "AdvOut", "RecFormat2", DEFAULT_CONTAINER);
 	config_set_default_bool(activeConfiguration, "AdvOut", "RecUseRescale", false);
 	config_set_default_uint(activeConfiguration, "AdvOut", "RecTracks", (1 << 0));
-	config_set_default_string(activeConfiguration, "AdvOut", "RecEncoder", "none");
+	config_set_default_string(activeConfiguration, "AdvOut", "RecEncoder", "obs_x264");
 	config_set_default_uint(activeConfiguration, "AdvOut", "FLVTrack", 1);
 	config_set_default_uint(activeConfiguration, "AdvOut", "StreamMultiTrackAudioMixes", 1);
 	config_set_default_bool(activeConfiguration, "AdvOut", "FFOutputToFile", true);
@@ -681,7 +683,7 @@ bool OBSBasic::InitBasicConfigDefaults()
 	config_set_default_uint(activeConfiguration, "AdvOut", "RecSplitFileTime", 15);
 	config_set_default_uint(activeConfiguration, "AdvOut", "RecSplitFileSize", 2048);
 
-	config_set_default_bool(activeConfiguration, "AdvOut", "RecRB", false);
+	config_set_default_bool(activeConfiguration, "AdvOut", "RecRB", true);
 	config_set_default_uint(activeConfiguration, "AdvOut", "RecRBTime", 20);
 	config_set_default_int(activeConfiguration, "AdvOut", "RecRBSize", 512);
 
@@ -780,6 +782,17 @@ void OBSBasic::InitBasicConfigDefaults2()
 
 	config_set_default_string(activeConfiguration, "AdvOut", "AudioEncoder", aac_default);
 	config_set_default_string(activeConfiguration, "AdvOut", "RecAudioEncoder", aac_default);
+
+	/* Recordings never share the (hidden) streaming encoder */
+	if (astrcmpi(config_get_string(activeConfiguration, "SimpleOutput", "RecQuality"), "Stream") == 0) {
+		config_set_string(activeConfiguration, "SimpleOutput", "RecQuality", "Small");
+	}
+	if (astrcmpi(config_get_string(activeConfiguration, "AdvOut", "RecEncoder"), "none") == 0) {
+		config_set_string(activeConfiguration, "AdvOut", "RecEncoder", "obs_x264");
+	}
+	if (astrcmpi(config_get_string(activeConfiguration, "AdvOut", "RecAudioEncoder"), "none") == 0) {
+		config_set_string(activeConfiguration, "AdvOut", "RecAudioEncoder", aac_default);
+	}
 }
 
 bool OBSBasic::InitBasicConfig()
@@ -979,12 +992,8 @@ void OBSBasic::OBSInit()
 	bool sourceIconsVisible = config_get_bool(App()->GetUserConfig(), "BasicWindow", "ShowSourceIcons");
 	ui->toggleSourceIcons->setChecked(sourceIconsVisible);
 
-	bool contextVisible = config_get_bool(App()->GetUserConfig(), "BasicWindow", "ShowContextToolbars");
-	ui->toggleContextBar->setChecked(contextVisible);
-	ui->contextContainer->setVisible(contextVisible);
-	if (contextVisible) {
-		UpdateContextBar(true);
-	}
+	ui->toggleContextBar->setChecked(false);
+	ui->contextContainer->setVisible(false);
 	UpdateEditMenu();
 
 	{
@@ -1125,6 +1134,7 @@ void OBSBasic::OBSInit()
 			on_resetDocks_triggered(true);
 		}
 	}
+	RemoveEditingDocks();
 
 	bool pre23Defaults = config_get_bool(App()->GetUserConfig(), "General", "Pre23Defaults");
 	if (pre23Defaults) {
@@ -1154,16 +1164,11 @@ void OBSBasic::OBSInit()
 	disableColorSpaceConversion(this);
 #endif
 
-	bool has_last_version = config_has_user_value(App()->GetAppConfig(), "General", "LastVersion");
 	bool first_run = config_get_bool(App()->GetUserConfig(), "General", "FirstRun");
 
 	if (!first_run) {
 		config_set_bool(App()->GetUserConfig(), "General", "FirstRun", true);
 		config_save_safe(App()->GetUserConfig(), "tmp", nullptr);
-	}
-
-	if (!first_run && !has_last_version && !Active()) {
-		QMetaObject::invokeMethod(this, &OBSBasic::on_autoConfigure_triggered, Qt::QueuedConnection);
 	}
 
 #if (defined(_WIN32) || defined(__APPLE__)) && (OBS_RELEASE_CANDIDATE > 0 || OBS_BETA > 0)
@@ -1183,14 +1188,6 @@ void OBSBasic::OBSInit()
 	}
 
 	OBSBasicStats::InitializeValues();
-
-	/* ----------------------- */
-	/* Add multiview menu      */
-
-	ui->viewMenu->addSeparator();
-
-	connect(ui->viewMenu->menuAction(), &QAction::hovered, this, &OBSBasic::updateMultiviewProjectorMenu);
-	OBSBasic::updateMultiviewProjectorMenu();
 
 	ui->sources->UpdateIcons();
 
@@ -1237,6 +1234,8 @@ void OBSBasic::OBSInit()
 		ui->actionRestartSafe->setText(QTStr("Basic.MainMenu.Help.RestartNormal"));
 	}
 
+	SimplifyMenus();
+
 	UpdatePreviewProgramIndicators();
 	OnFirstLoad();
 
@@ -1245,6 +1244,41 @@ void OBSBasic::OBSInit()
 	}
 
 	App()->handlePluginLoadState();
+}
+
+static void ClearMenuShortcuts(QMenu *menu)
+{
+	for (QAction *action : menu->actions()) {
+		if (action->menu()) {
+			ClearMenuShortcuts(action->menu());
+		} else {
+			action->setShortcuts({});
+		}
+	}
+}
+
+void OBSBasic::SimplifyMenus()
+{
+	/* Scene editing, profiles, scene collections and the streaming setup wizard are not part of the recorder */
+	for (QMenu *menu : {ui->menuBasic_MainMenu_Edit, ui->profileMenu, ui->sceneCollectionMenu, ui->menuTools}) {
+		ClearMenuShortcuts(menu);
+		ui->menubar->removeAction(menu->menuAction());
+	}
+
+	ui->menu_File->removeAction(ui->actionShowProfileFolder);
+
+	for (QAction *action : {ui->sceneListModeMenu->menuAction(), ui->toggleListboxToolbars, ui->toggleContextBar,
+				ui->toggleSourceIcons, ui->multiviewProjectorMenu->menuAction()}) {
+		ui->viewMenu->removeAction(action);
+	}
+
+	/* Updates and release notes would refer to upstream OBS Studio */
+	for (QAction *action :
+	     {ui->actionRepair, ui->actionCheckForUpdates, ui->actionShowWhatsNew, ui->actionReleaseNotes}) {
+		if (action) {
+			ui->menuBasic_MainMenu_Help->removeAction(action);
+		}
+	}
 }
 
 void OBSBasic::OnFirstLoad()
@@ -1979,14 +2013,7 @@ void OBSBasic::UpdateTitleBar()
 {
 	stringstream name;
 
-	const char *profile = config_get_string(App()->GetUserConfig(), "Basic", "Profile");
-	const char *sceneCollection = config_get_string(App()->GetUserConfig(), "Basic", "SceneCollection");
-
 	name << "OBS ";
-	if (previewProgramMode) {
-		name << "Studio ";
-	}
-
 	name << App()->GetVersionString(false);
 	if (safe_mode) {
 		name << " (" << Str("TitleBar.SafeMode") << ")";
@@ -1994,9 +2021,6 @@ void OBSBasic::UpdateTitleBar()
 	if (App()->IsPortableMode()) {
 		name << " - " << Str("TitleBar.PortableMode");
 	}
-
-	name << " - " << Str("TitleBar.Profile") << ": " << profile;
-	name << " - " << Str("TitleBar.Scenes") << ": " << sceneCollection;
 
 	setWindowTitle(QT_UTF8(name.str().c_str()));
 }

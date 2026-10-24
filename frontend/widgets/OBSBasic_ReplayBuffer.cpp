@@ -20,6 +20,7 @@
 #include "OBSBasic.hpp"
 
 #include <components/UIValidation.hpp>
+#include <utility/CaptureTarget.hpp>
 
 #include <qt-wrappers.hpp>
 
@@ -76,6 +77,8 @@ void OBSBasic::StartReplayBuffer()
 	if (disableOutputsRef) {
 		return;
 	}
+
+	captureTarget->SyncCanvasSize();
 
 	if (!UIValidation::NoSourcesConfirmation(this)) {
 		return;

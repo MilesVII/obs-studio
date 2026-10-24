@@ -96,23 +96,8 @@ void OBSBasic::InitDefaultTransitions()
 
 void OBSBasic::AddQuickTransitionHotkey(QuickTransition *qt)
 {
-	DStr hotkeyId;
-	QString hotkeyName;
-
-	dstr_printf(hotkeyId, "OBSBasic.QuickTransition.%d", qt->id);
-	hotkeyName = QTStr("QuickTransitions.HotkeyName").arg(MakeQuickTransitionText(qt));
-
-	auto quickTransition = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
-		int id = (int)(uintptr_t)data;
-		OBSBasic *main = OBSBasic::Get();
-
-		if (pressed) {
-			QMetaObject::invokeMethod(main, &OBSBasic::TriggerQuickTransition, Qt::QueuedConnection, id);
-		}
-	};
-
-	qt->hotkey = obs_hotkey_register_frontend(hotkeyId->array, QT_TO_UTF8(hotkeyName), quickTransition,
-						  (void *)(uintptr_t)qt->id);
+	/* Transitions between scenes do not exist in the recorder, so quick transitions get no hotkeys */
+	UNUSED_PARAMETER(qt);
 }
 
 void OBSBasic::TriggerQuickTransition(int id)

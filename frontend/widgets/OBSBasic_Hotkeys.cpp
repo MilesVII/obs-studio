@@ -18,6 +18,7 @@
 ******************************************************************************/
 
 #include "OBSBasic.hpp"
+#include "RecordingPanel.hpp"
 
 #include <widgets/OBSBasicStats.hpp>
 
@@ -139,27 +140,6 @@ void OBSBasic::CreateHotkeys()
 		return false;                                              \
 	}
 
-	streamingHotkeys = obs_hotkey_pair_register_frontend(
-		"OBSBasic.StartStreaming", Str("Basic.Main.StartStreaming"), "OBSBasic.StopStreaming",
-		Str("Basic.Main.StopStreaming"),
-		MAKE_CALLBACK(!basic.outputHandler->StreamingActive() && !basic.streamingStarting, basic.StartStreaming,
-			      "Starting stream"),
-		MAKE_CALLBACK(basic.outputHandler->StreamingActive() && !basic.streamingStarting, basic.StopStreaming,
-			      "Stopping stream"),
-		this, this);
-	LoadHotkeyPair(streamingHotkeys, "OBSBasic.StartStreaming", "OBSBasic.StopStreaming");
-
-	auto cb = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
-		OBSBasic &basic = *static_cast<OBSBasic *>(data);
-		if (basic.outputHandler->StreamingActive() && pressed) {
-			basic.ForceStopStreaming();
-		}
-	};
-
-	forceStreamingStopHotkey = obs_hotkey_register_frontend("OBSBasic.ForceStopStreaming",
-								Str("Basic.Main.ForceStopStreaming"), cb, this);
-	LoadHotkey(forceStreamingStopHotkey, "OBSBasic.ForceStopStreaming");
-
 	recordingHotkeys = obs_hotkey_pair_register_frontend(
 		"OBSBasic.StartRecording", Str("Basic.Main.StartRecording"), "OBSBasic.StopRecording",
 		Str("Basic.Main.StopRecording"),
@@ -253,33 +233,7 @@ void OBSBasic::CreateHotkeys()
 		MAKE_CALLBACK(basic.previewEnabled, basic.DisablePreview, "Disabling preview"), this, this);
 	LoadHotkeyPair(togglePreviewHotkeys, "OBSBasic.EnablePreview", "OBSBasic.DisablePreview");
 
-	togglePreviewProgramHotkeys = obs_hotkey_pair_register_frontend(
-		"OBSBasic.EnablePreviewProgram", Str("Basic.EnablePreviewProgramMode"),
-		"OBSBasic.DisablePreviewProgram", Str("Basic.DisablePreviewProgramMode"),
-		MAKE_CALLBACK(!basic.IsPreviewProgramMode(), basic.EnablePreviewProgram, "Enabling preview program"),
-		MAKE_CALLBACK(basic.IsPreviewProgramMode(), basic.DisablePreviewProgram, "Disabling preview program"),
-		this, this);
-	LoadHotkeyPair(togglePreviewProgramHotkeys, "OBSBasic.EnablePreviewProgram", "OBSBasic.DisablePreviewProgram",
-		       "OBSBasic.TogglePreviewProgram");
-
-	contextBarHotkeys = obs_hotkey_pair_register_frontend(
-		"OBSBasic.ShowContextBar", Str("Basic.Main.ShowContextBar"), "OBSBasic.HideContextBar",
-		Str("Basic.Main.HideContextBar"),
-		MAKE_CALLBACK(!basic.ui->contextContainer->isVisible(), basic.ShowContextBar, "Showing Context Bar"),
-		MAKE_CALLBACK(basic.ui->contextContainer->isVisible(), basic.HideContextBar, "Hiding Context Bar"),
-		this, this);
-	LoadHotkeyPair(contextBarHotkeys, "OBSBasic.ShowContextBar", "OBSBasic.HideContextBar");
 #undef MAKE_CALLBACK
-
-	auto transition = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
-		if (pressed) {
-			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), &OBSBasic::TransitionClicked,
-						  Qt::QueuedConnection);
-		}
-	};
-
-	transitionHotkey = obs_hotkey_register_frontend("OBSBasic.Transition", Str("Transition"), transition, this);
-	LoadHotkey(transitionHotkey, "OBSBasic.Transition");
 
 	auto resetStats = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
 		if (pressed) {
@@ -302,21 +256,13 @@ void OBSBasic::CreateHotkeys()
 	screenshotHotkey = obs_hotkey_register_frontend("OBSBasic.Screenshot", Str("Screenshot"), screenshot, this);
 	LoadHotkey(screenshotHotkey, "OBSBasic.Screenshot");
 
-	auto screenshotSource = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
-		if (pressed) {
-			QMetaObject::invokeMethod(static_cast<OBSBasic *>(data), &OBSBasic::ScreenshotSelectedSource,
-						  Qt::QueuedConnection);
-		}
-	};
-
-	sourceScreenshotHotkey = obs_hotkey_register_frontend("OBSBasic.SelectedSourceScreenshot",
-							      Str("Screenshot.SourceHotkey"), screenshotSource, this);
-	LoadHotkey(sourceScreenshotHotkey, "OBSBasic.SelectedSourceScreenshot");
+	if (recordingPanel) {
+		recordingPanel->RefreshHotkeys();
+	}
 }
 
 void OBSBasic::ClearHotkeys()
 {
-	obs_hotkey_pair_unregister(streamingHotkeys);
 	obs_hotkey_pair_unregister(recordingHotkeys);
 	obs_hotkey_pair_unregister(pauseHotkeys);
 	obs_hotkey_unregister(splitFileHotkey);
@@ -325,13 +271,8 @@ void OBSBasic::ClearHotkeys()
 	obs_hotkey_unregister(saveReplayBufferHotkey);
 	obs_hotkey_pair_unregister(vcamHotkeys);
 	obs_hotkey_pair_unregister(togglePreviewHotkeys);
-	obs_hotkey_pair_unregister(contextBarHotkeys);
-	obs_hotkey_pair_unregister(togglePreviewProgramHotkeys);
-	obs_hotkey_unregister(forceStreamingStopHotkey);
-	obs_hotkey_unregister(transitionHotkey);
 	obs_hotkey_unregister(statsHotkey);
 	obs_hotkey_unregister(screenshotHotkey);
-	obs_hotkey_unregister(sourceScreenshotHotkey);
 }
 
 void OBSBasic::ResetStatsHotkey()

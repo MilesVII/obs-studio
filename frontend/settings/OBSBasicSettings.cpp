@@ -934,6 +934,39 @@ OBSBasicSettings::OBSBasicSettings(QWidget *parent)
 	ui->audioMsg->setVisible(false);
 	ui->advancedMsg->setVisible(false);
 	ui->advancedMsg2->setVisible(false);
+
+	HideRemovedFeatures();
+}
+
+void OBSBasicSettings::HideRemovedFeatures()
+{
+	/* Streaming, scene editing, studio mode and projectors are not part of the recorder */
+	ui->listWidget->item(Pages::STREAM)->setHidden(true);
+	ui->listWidget->item(Pages::ACCESSIBILITY)->setHidden(true);
+
+	for (QWidget *widget : std::initializer_list<QWidget *>{
+		     ui->warnBeforeStreamStart, ui->warnBeforeStreamStop, ui->recordWhenStreaming,
+		     ui->keepRecordStreamStops, ui->replayWhileStreaming, ui->keepReplayStreamStops, ui->groupBox_10,
+		     ui->groupBox_14, ui->groupBox_18, ui->groupBox_19, ui->groupBox_11, ui->groupBoxMultiview,
+		     ui->multitrackVideoNoticeBox, ui->simpleStreamingGroupBox, ui->groupBox_5, ui->groupBox_7,
+		     ui->advNetworkGroupBox, ui->sourcesGroup}) {
+		if (widget) {
+			widget->setVisible(false);
+		}
+	}
+
+	ui->advOutTabs->setTabVisible(ui->advOutTabs->indexOf(ui->advOutputStreamTab), false);
+	if (ui->advOutTabs->currentWidget() == ui->advOutputStreamTab) {
+		ui->advOutTabs->setCurrentWidget(ui->advOutputRecordTab);
+	}
+
+	/* The canvas follows the capture target, only the frame rate is configurable */
+	ui->formLayout_15->setRowVisible(ui->label_8, false);
+	ui->formLayout_15->setRowVisible(ui->outputResLabel, false);
+	ui->formLayout_15->setRowVisible(ui->label_11, false);
+	QLabel *canvasNote = new QLabel(QTStr("Basic.Settings.Video.CanvasFollowsCapture"), ui->videoGeneral);
+	canvasNote->setWordWrap(true);
+	ui->formLayout_15->insertRow(0, canvasNote);
 }
 
 OBSBasicSettings::~OBSBasicSettings()
@@ -2811,12 +2844,9 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 	using namespace std;
 	using encoders_elem_t = tuple<OBSEncoder, QPointer<QLabel>, QPointer<QWidget>>;
 	using outputs_elem_t = tuple<OBSOutput, QPointer<QLabel>, QPointer<QWidget>>;
-	using services_elem_t = tuple<OBSService, QPointer<QLabel>, QPointer<QWidget>>;
 	using sources_elem_t = tuple<OBSSource, QPointer<QLabel>, QPointer<QWidget>>;
 	vector<encoders_elem_t> encoders;
 	vector<outputs_elem_t> outputs;
-	vector<services_elem_t> services;
-	vector<sources_elem_t> scenes;
 	vector<sources_elem_t> sources;
 
 	vector<obs_hotkey_id> pairIds;
@@ -2848,16 +2878,15 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 		return false;
 	};
 
-	auto HandleService = [&](void *registerer, OBSHotkeyLabel *label, OBSHotkeyWidget *hw) {
-		auto weak_service = static_cast<obs_weak_service_t *>(registerer);
-		auto service = OBSGetStrongRef(weak_service);
+	/* Streaming services and the hidden scene are not configurable in the recorder, their hotkeys are not shown */
+	auto DiscardHotkey = [](OBSHotkeyLabel *label, OBSHotkeyWidget *hw) {
+		label->deleteLater();
+		hw->deleteLater();
+		return true;
+	};
 
-		if (!service) {
-			return true;
-		}
-
-		services.emplace_back(std::move(service), label, hw);
-		return false;
+	auto HandleService = [&](void *, OBSHotkeyLabel *label, OBSHotkeyWidget *hw) {
+		return DiscardHotkey(label, hw);
 	};
 
 	auto HandleSource = [&](void *registerer, OBSHotkeyLabel *label, OBSHotkeyWidget *hw) {
@@ -2869,7 +2898,7 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 		}
 
 		if (obs_scene_from_source(source)) {
-			scenes.emplace_back(source, label, hw);
+			return DiscardHotkey(label, hw);
 		} else if (obs_source_get_name(source) != NULL) {
 			sources.emplace_back(source, label, hw);
 		}
@@ -2985,10 +3014,8 @@ void OBSBasicSettings::LoadHotkeySettings(obs_hotkey_id ignoreKey)
 	}
 
 	AddHotkeys(*hotkeysLayout, obs_output_get_name, outputs);
-	AddHotkeys(*hotkeysLayout, obs_source_get_name, scenes);
 	AddHotkeys(*hotkeysLayout, obs_source_get_name, sources);
 	AddHotkeys(*hotkeysLayout, obs_encoder_get_name, encoders);
-	AddHotkeys(*hotkeysLayout, obs_service_get_name, services);
 
 	ScanDuplicateHotkeys(hotkeysLayout);
 
@@ -4898,7 +4925,6 @@ void OBSBasicSettings::FillSimpleRecordingValues()
 	ui->simpleOutRecQuality->addItem(QTStr("Basic.Settings.Output.Simple.RecordingQuality." str), QString(str));
 #define ENCODER_STR(str) QTStr("Basic.Settings.Output.Simple.Encoder." str)
 
-	ADD_QUALITY("Stream");
 	ADD_QUALITY("Small");
 	ADD_QUALITY("HQ");
 	ADD_QUALITY("Lossless");

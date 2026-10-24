@@ -18,6 +18,8 @@
 #include "PluginModuleLoader.hpp"
 #include "PluginManager.hpp"
 
+#include <utility/AppConfigDir.hpp>
+
 #include <obs.h>
 #include <util/dstr.h>
 #include <util/platform.h>
@@ -66,7 +68,7 @@
 using State = OBS::PluginManager::State;
 using ModuleType = obs_runtime_module_type;
 
-constexpr std::string_view kPluginPathSuffix{"obs-studio/plugins/%module%"};
+constexpr std::string_view kPluginPathSuffix{OBS_APP_CONFIG_DIR "/plugins/%module%"};
 constexpr std::string_view kUserPluginPathSuffix{"/%module%"};
 constexpr std::string_view kPortablePluginPath{"../../plugins/%module%"};
 

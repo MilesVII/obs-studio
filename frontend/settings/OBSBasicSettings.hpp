@@ -189,6 +189,7 @@ private:
 	void LoadAudioSettings();
 	void LoadVideoSettings();
 	void LoadHotkeySettings(obs_hotkey_id ignoreKey = OBS_INVALID_HOTKEY_ID);
+	void HideRemovedFeatures();
 	void LoadA11ySettings(bool presetChange = false);
 	void LoadAppearanceSettings(bool reload = false);
 	void LoadAdvancedSettings();

@@ -444,3 +444,23 @@ bool HighContrastEnabled()
 
 	return false;
 }
+
+std::string GetPrimaryMonitorDeviceId()
+{
+	HMONITOR monitor = MonitorFromPoint(POINT{0, 0}, MONITOR_DEFAULTTOPRIMARY);
+
+	MONITORINFOEXA info = {};
+	info.cbSize = sizeof(info);
+	if (!GetMonitorInfoA(monitor, (LPMONITORINFO)&info)) {
+		return std::string();
+	}
+
+	/* Same lookup as the display capture source, which falls back to the GDI device name as well */
+	DISPLAY_DEVICEA device = {};
+	device.cb = sizeof(device);
+	if (EnumDisplayDevicesA(info.szDevice, 0, &device, EDD_GET_DEVICE_INTERFACE_NAME)) {
+		return device.DeviceID;
+	}
+
+	return info.szDevice;
+}

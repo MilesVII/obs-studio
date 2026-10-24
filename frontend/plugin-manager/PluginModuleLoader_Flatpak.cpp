@@ -17,6 +17,8 @@
 
 #include "PluginModuleLoader.hpp"
 #include "PluginManager.hpp"
+
+#include <utility/AppConfigDir.hpp>
 #include <LoaderPaths_Flatpak.hpp>
 
 #include <obs.h>
@@ -51,10 +53,10 @@ using ModuleType = obs_runtime_module_type;
 
 namespace Constants = OBS::Constants;
 
-constexpr std::string_view kConfigBinaryPath{"/obs-studio/plugins/%module%/"};
-constexpr std::string_view kConfigDataPath{"/obs-studio/plugins/%module%/data/"};
-constexpr std::string_view kLegacyConfigBinaryPath{"/obs-studio/plugins/%module%/bin/64bit"};
-constexpr std::string_view kLegacyConfigDataPath{"/obs-studio/plugins/%module%/data"};
+constexpr std::string_view kConfigBinaryPath{"/" OBS_APP_CONFIG_DIR "/plugins/%module%/"};
+constexpr std::string_view kConfigDataPath{"/" OBS_APP_CONFIG_DIR "/plugins/%module%/data/"};
+constexpr std::string_view kLegacyConfigBinaryPath{"/" OBS_APP_CONFIG_DIR "/plugins/%module%/bin/64bit"};
+constexpr std::string_view kLegacyConfigDataPath{"/" OBS_APP_CONFIG_DIR "/plugins/%module%/data"};
 constexpr std::string_view kFlatpakBasePath{"/app/plugins/"};
 
 namespace {

@@ -47,6 +47,7 @@
 
 extern volatile bool recording_paused;
 
+class CaptureTarget;
 class ColorSelect;
 class OBSAbout;
 class OBSBasicAdvAudio;
@@ -58,6 +59,7 @@ class OBSBasicTransform;
 class OBSLogViewer;
 class OBSMissingFiles;
 class OBSProjector;
+class RecordingPanel;
 class ScreenshotObj;
 class VolumeControl;
 #ifdef YOUTUBE_ENABLED
@@ -453,6 +455,13 @@ private:
 
 	QPointer<OBSDock> controlsDock;
 	QPointer<OBSDock> mixerDock;
+	QPointer<OBSDock> captureDock;
+	QPointer<OBSDock> recordingDock;
+	QPointer<RecordingPanel> recordingPanel;
+
+	/* Scene, source and transition editing is not part of the recorder, these docks are never shown */
+	void RemoveEditingDocks();
+	void SimplifyMenus();
 
 public:
 	void AddDockWidget(QDockWidget *dock, Qt::DockWidgetArea area, bool extraBrowser = false);
@@ -785,6 +794,15 @@ public:
 	}
 
 	const char *GetCurrentOutputPath();
+	void SetCurrentOutputPath(const char *path);
+
+	/* Sets the canvas and output resolution, fails while any output is active */
+	bool SetCanvasSize(uint32_t cx, uint32_t cy);
+
+	CaptureTarget *GetCaptureTarget() const { return captureTarget; }
+
+private:
+	CaptureTarget *captureTarget = nullptr;
 
 private slots:
 	void ResizeOutputSizeOfSource();

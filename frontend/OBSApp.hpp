@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <utility/AppConfigDir.hpp>
 #include <utility/NativeEventFilter.hpp>
 #include <utility/OBSTheme.hpp>
 #include <utility/ThumbnailManager.hpp>

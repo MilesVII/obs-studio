@@ -53,10 +53,6 @@ void OBSBasic::SystemTrayInit()
 
 	trayMenu->addAction(showHide);
 	trayMenu->addSeparator();
-	trayMenu->addMenu(previewProjector);
-	trayMenu->addMenu(studioProgramProjector);
-	trayMenu->addSeparator();
-	trayMenu->addAction(sysTrayStream);
 	trayMenu->addAction(sysTrayRecord);
 	trayMenu->addAction(sysTrayReplayBuffer);
 	trayMenu->addAction(sysTrayVirtualCam);

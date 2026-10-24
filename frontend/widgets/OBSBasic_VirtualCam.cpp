@@ -21,6 +21,7 @@
 
 #include <components/UIValidation.hpp>
 #include <dialogs/OBSBasicVCamConfig.hpp>
+#include <utility/CaptureTarget.hpp>
 
 #define VIRTUAL_CAM_START "==== Virtual Camera Start =========================================="
 #define VIRTUAL_CAM_STOP "==== Virtual Camera Stop ==========================================="
@@ -36,6 +37,8 @@ void OBSBasic::StartVirtualCam()
 	if (disableOutputsRef) {
 		return;
 	}
+
+	captureTarget->SyncCanvasSize();
 
 	SaveProject();
 

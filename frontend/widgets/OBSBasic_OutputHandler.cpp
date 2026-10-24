@@ -18,6 +18,7 @@
 ******************************************************************************/
 
 #include "OBSBasic.hpp"
+#include "RecordingPanel.hpp"
 
 #include <qt-wrappers.hpp>
 
@@ -45,6 +46,10 @@ void OBSBasic::ResetOutputs()
 		UpdateIsRecordingPausable();
 	} else {
 		outputHandler->Update();
+	}
+
+	if (recordingPanel) {
+		recordingPanel->RefreshOutputPath();
 	}
 }
 
@@ -83,15 +88,32 @@ void OBSBasic::ResizeOutputSizeOfSource()
 	width = ((width + 3) / 4) * 4;   // Round width up to the nearest multiple of 4
 	height = ((height + 1) / 2) * 2; // Round height up to the nearest multiple of 2
 
-	config_set_uint(activeConfiguration, "Video", "BaseCX", width);
-	config_set_uint(activeConfiguration, "Video", "BaseCY", height);
-	config_set_uint(activeConfiguration, "Video", "OutputCX", width);
-	config_set_uint(activeConfiguration, "Video", "OutputCY", height);
+	SetCanvasSize(width, height);
+	on_actionFitToScreen_triggered();
+}
 
-	ResetVideo();
+bool OBSBasic::SetCanvasSize(uint32_t cx, uint32_t cy)
+{
+	if (Active() || obs_video_active()) {
+		return false;
+	}
+
+	config_set_uint(activeConfiguration, "Video", "BaseCX", cx);
+	config_set_uint(activeConfiguration, "Video", "BaseCY", cy);
+	config_set_uint(activeConfiguration, "Video", "OutputCX", cx);
+	config_set_uint(activeConfiguration, "Video", "OutputCY", cy);
+
+	int ret = ResetVideo();
 	ResetOutputs();
 	activeConfiguration.SaveSafe("tmp");
-	on_actionFitToScreen_triggered();
+
+	if (ret != OBS_VIDEO_SUCCESS) {
+		blog(LOG_WARNING, "Failed to resize the canvas to %ux%u (%d)", cx, cy, ret);
+		return false;
+	}
+
+	blog(LOG_INFO, "Canvas resized to %ux%u", cx, cy);
+	return true;
 }
 
 const char *OBSBasic::GetCurrentOutputPath()
@@ -112,6 +134,25 @@ const char *OBSBasic::GetCurrentOutputPath()
 	}
 
 	return path;
+}
+
+void OBSBasic::SetCurrentOutputPath(const char *path)
+{
+	const char *mode = config_get_string(Config(), "Output", "Mode");
+
+	if (strcmp(mode, "Advanced") == 0) {
+		const char *advanced_mode = config_get_string(Config(), "AdvOut", "RecType");
+
+		if (strcmp(advanced_mode, "FFmpeg") == 0) {
+			config_set_string(Config(), "AdvOut", "FFFilePath", path);
+		} else {
+			config_set_string(Config(), "AdvOut", "RecFilePath", path);
+		}
+	} else {
+		config_set_string(Config(), "SimpleOutput", "FilePath", path);
+	}
+
+	activeConfiguration.SaveSafe("tmp");
 }
 
 void OBSBasic::OutputPathInvalidMessage()

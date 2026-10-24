@@ -77,6 +77,9 @@ public:
 };
 
 bool IsRunningOnWine();
+
+/* Device ID that display capture uses to identify the primary monitor */
+std::string GetPrimaryMonitorDeviceId();
 #endif
 
 #ifdef __APPLE__

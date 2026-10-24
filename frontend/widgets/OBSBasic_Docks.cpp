@@ -80,25 +80,31 @@ void OBSBasic::on_resetDocks_triggered(bool force)
 	int cx = width();
 	int bottomDocksHeight = height();
 
-	bottomDocksHeight = bottomDocksHeight * 225 / 1000;
+	bottomDocksHeight = bottomDocksHeight * 300 / 1000;
 
-	ui->scenesDock->setVisible(true);
-	ui->sourcesDock->setVisible(true);
+	RemoveEditingDocks();
+	captureDock->setVisible(true);
+	recordingDock->setVisible(true);
 	ui->mixerDock->setVisible(true);
-	ui->transitionsDock->setVisible(true);
 	controlsDock->setVisible(true);
 	statsDock->setVisible(false);
 	statsDock->setFloating(true);
 
-	QList<QDockWidget *> bottomDocks{ui->mixerDock, ui->transitionsDock, controlsDock};
+	QList<QDockWidget *> bottomDocks{captureDock, recordingDock, ui->mixerDock, controlsDock};
 
-	resizeDocks(bottomDocks, {bottomDocksHeight, bottomDocksHeight, bottomDocksHeight}, Qt::Vertical);
-	resizeDocks(bottomDocks, {cx * 45 / 100, cx * 14 / 100, cx * 16 / 100}, Qt::Horizontal);
-
-	int sideDockWidth = std::min(width() * 30 / 100, 280);
-	resizeDocks({ui->scenesDock, ui->sourcesDock}, {sideDockWidth, sideDockWidth}, Qt::Horizontal);
+	resizeDocks(bottomDocks, {bottomDocksHeight, bottomDocksHeight, bottomDocksHeight, bottomDocksHeight},
+		    Qt::Vertical);
+	resizeDocks(bottomDocks, {cx * 25 / 100, cx * 30 / 100, cx * 30 / 100, cx * 15 / 100}, Qt::Horizontal);
 
 	activateWindow();
+}
+
+void OBSBasic::RemoveEditingDocks()
+{
+	for (QDockWidget *dock : {ui->scenesDock, ui->sourcesDock, ui->transitionsDock}) {
+		removeDockWidget(dock);
+		dock->setVisible(false);
+	}
 }
 
 void OBSBasic::on_lockDocks_toggled(bool lock)
@@ -111,10 +117,9 @@ void OBSBasic::on_lockDocks_toggled(bool lock)
 	QDockWidget::DockWidgetFeatures mainFeatures = features;
 	mainFeatures &= ~QDockWidget::QDockWidget::DockWidgetClosable;
 
-	ui->scenesDock->setFeatures(mainFeatures);
-	ui->sourcesDock->setFeatures(mainFeatures);
+	captureDock->setFeatures(mainFeatures);
+	recordingDock->setFeatures(mainFeatures);
 	ui->mixerDock->setFeatures(mainFeatures);
-	ui->transitionsDock->setFeatures(mainFeatures);
 	controlsDock->setFeatures(mainFeatures);
 	statsDock->setFeatures(features);
 
@@ -203,6 +208,8 @@ bool OBSBasic::IsDockObjectNameUsed(const QString &name)
 	     << "mixerDock"
 	     << "transitionsDock"
 	     << "controlsDock"
+	     << "captureDock"
+	     << "recordingDock"
 	     << "statsDock";
 	list << extraDockNames;
 	list << extraCustomDockNames;
